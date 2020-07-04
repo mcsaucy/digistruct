@@ -10,7 +10,4 @@ edition = "2018"
 bytes = "0.5.5"
 hex = "0.4.2"
 ring = "0.16.15"
-
-[dependencies.rusqlite]
-version = "0.23.1"
-features = ["array", "bundled"]
+rusqlite = "0.23.1"
