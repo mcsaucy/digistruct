@@ -324,12 +324,30 @@ mod tests {
             insert_appendedge(&conn, &bcd)?;
             insert_appendedge(&conn, &abcd)?;
 
+            /*
+             * OK, so this is gonna suck. We need a scalable way to construct trees from more than
+             * just raw and append nodes. All trees end with raw data leaves (which is nice), but
+             * shit breaks down really quickly when we start thinking about adding new types of
+             * nodes. Presently, we query for all edges and strip out all nodes we know may be
+             * satisfied by a leaf instead (it's cheaper, after all). We could try to do the same
+             * things with a new type (let's call it a patch node), but things break down if we do
+             * append(raw, patch(raw, append(raw, raw))). We'd need to bridge the gap in append
+             * node processing caused by the switch to patch-typed nodes.
+
+             * A possible approach would be to throw everything into a single table with a "kind"
+             * column that we used to determine which columns we would inspect. Something like:
+             * (composite_id, digest, kind, data, left, right, basis, patch)
+             * "composite_id" is the SHA256(data) or SHA256(left + right) or SHA256(basis, patch),
+             * depending upon the kind, for use in constructing a primary key.
+            */
             conn.execute(
                 "CREATE TEMPORARY TABLE edges AS
+
                 WITH RECURSIVE branches (digest, left, right) AS (
                     SELECT digest, left, right
                     FROM append_edges
                     WHERE digest = ?1
+                        -- drop if a cheaper way exists
                         AND digest NOT IN (SELECT digest FROM data_leaves)
 
                     UNION ALL
@@ -338,6 +356,9 @@ mod tests {
                     FROM append_edges child
                     JOIN branches parent
                     ON child.digest IN (parent.left, parent.right)
+                    WHERE
+                        -- drop if a cheaper way exists
+                        parent.digest NOT IN (SELECT digest FROM data_leaves)
                 )
                 SELECT * FROM branches;",
                 rusqlite::params![sha256(b"abcd")],
