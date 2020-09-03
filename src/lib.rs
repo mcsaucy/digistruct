@@ -47,13 +47,13 @@ pub enum Node {
     Append(AppendEdge),
 }
 
-pub struct Hippo {
+pub struct Digistructor {
     graph: HashMap<Vec<u8>, Node>,
 }
 
-impl Hippo {
+impl Digistructor {
     pub fn new() -> Self {
-        Hippo {
+        Digistructor {
             graph: HashMap::new(),
         }
     }
@@ -125,10 +125,10 @@ mod tests {
         #[test]
         fn ok() -> Result<(), Error> {
             let want = raw(b"abc" as &[u8]);
-            let mut hippo = Hippo::new();
-            hippo.add(Node::Raw(want.clone()));
+            let mut ds = Digistructor::new();
+            ds.add(Node::Raw(want.clone()));
 
-            let have = hippo.get(&want.digest)?;
+            let have = ds.get(&want.digest)?;
             assert_eq!(want.data, have.as_ref());
             Ok(())
         }
@@ -139,10 +139,10 @@ mod tests {
                 digest: Vec::from(b"badhash" as &[u8]),
                 data: Vec::from(b"abc" as &[u8]),
             };
-            let mut hippo = Hippo::new();
-            hippo.add(Node::Raw(want.clone()));
+            let mut ds = Digistructor::new();
+            ds.add(Node::Raw(want.clone()));
 
-            let have = hippo.get(&want.digest);
+            let have = ds.get(&want.digest);
             match have {
                 Ok(_) => panic!("failed to catch digest mismatch"),
                 Err(e) => match e {
@@ -180,19 +180,19 @@ mod tests {
                 left: ab.digest.clone(),
                 right: cd.digest.clone(),
             };
-            let mut hippo = Hippo::new();
+            let mut ds = Digistructor::new();
 
-            hippo.add(Node::Raw(a));
-            hippo.add(Node::Raw(b));
-            hippo.add(Node::Raw(c));
-            hippo.add(Node::Raw(d));
+            ds.add(Node::Raw(a));
+            ds.add(Node::Raw(b));
+            ds.add(Node::Raw(c));
+            ds.add(Node::Raw(d));
 
-            hippo.add(Node::Append(ab));
-            hippo.add(Node::Append(cd));
-            hippo.add(Node::Append(abcd));
+            ds.add(Node::Append(ab));
+            ds.add(Node::Append(cd));
+            ds.add(Node::Append(abcd));
 
             let want = Bytes::from(b"abcd" as &[u8]);
-            let have = hippo.get(&sha256(b"abcd"))?;
+            let have = ds.get(&sha256(b"abcd"))?;
             assert_eq!(want, have);
             Ok(())
         }
@@ -221,19 +221,19 @@ mod tests {
                 left: a.digest.clone(),
                 right: bcd.digest.clone(),
             };
-            let mut hippo = Hippo::new();
+            let mut ds = Digistructor::new();
 
-            hippo.add(Node::Raw(a));
-            hippo.add(Node::Raw(b));
-            hippo.add(Node::Raw(c));
-            hippo.add(Node::Raw(d));
+            ds.add(Node::Raw(a));
+            ds.add(Node::Raw(b));
+            ds.add(Node::Raw(c));
+            ds.add(Node::Raw(d));
 
-            hippo.add(Node::Append(bc));
-            hippo.add(Node::Append(bcd));
-            hippo.add(Node::Append(abcd));
+            ds.add(Node::Append(bc));
+            ds.add(Node::Append(bcd));
+            ds.add(Node::Append(abcd));
 
             let want = Bytes::from(b"abcd" as &[u8]);
-            match hippo.get(&sha256(b"abcd")) {
+            match ds.get(&sha256(b"abcd")) {
                 Ok(have) => assert_eq!(want, have),
                 Err(err) => panic!("unexpected error {}", err),
             };
@@ -374,7 +374,7 @@ mod tests {
                 Ok(edge)
             })?;
 
-            let mut hippo = Hippo::new();
+            let mut ds = Digistructor::new();
             let mut digs = std::collections::HashSet::new();
 
             for n in edges {
@@ -384,11 +384,11 @@ mod tests {
                 digs.insert(edge.left.clone());
                 digs.insert(edge.right.clone());
 
-                hippo.add(Node::Append(edge));
+                ds.add(Node::Append(edge));
             }
             let values = Rc::new(
                 digs.iter()
-                    .filter(|d| hippo.check(d))
+                    .filter(|d| ds.check(d))
                     .cloned()
                     .map(rusqlite::types::Value::from)
                     .collect::<Vec<rusqlite::types::Value>>(),
@@ -410,11 +410,11 @@ mod tests {
             })?;
 
             for n in leaves {
-                hippo.add(Node::Raw(n?));
+                ds.add(Node::Raw(n?));
             }
 
             let want = Bytes::from(b"abcd" as &[u8]);
-            let have = hippo.get(&sha256(b"abcd")).expect("failed to get abcd");
+            let have = ds.get(&sha256(b"abcd")).expect("failed to get abcd");
             assert_eq!(want, have);
 
             Ok(())

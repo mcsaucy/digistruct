@@ -1,5 +1,5 @@
 [package]
-name = "hippo"
+name = "digistruct"
 version = "0.1.0"
 authors = ["Josh McSavaney <mcsaucy@csh.rit.edu>"]
 edition = "2018"
